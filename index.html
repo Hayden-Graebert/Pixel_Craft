@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixel Craft - Minecraft 26.3 Datapack Texture Editor</title>
+  <title>Pixel Craft - Minecraft Datapack Texture Editor</title>
   <style>
     :root {
       --bg-dark: #121316;
@@ -54,7 +54,7 @@
 
     .main-layout {
       display: grid;
-      grid-template-columns: 360px 1fr;
+      grid-template-columns: 380px 1fr;
       flex: 1;
       overflow: hidden;
     }
@@ -180,13 +180,14 @@
     }
 
     .item-results-list {
-      max-height: 220px;
+      height: 240px;
       overflow-y: auto;
       border: 1px solid var(--border-color);
       border-radius: 6px;
       background-color: var(--bg-panel);
       display: grid;
       grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: max-content;
       gap: 4px;
       padding: 6px;
     }
@@ -335,7 +336,8 @@
 
     .item-count-badge {
       font-size: 0.72rem;
-      color: var(--text-muted);
+      color: #10b981;
+      font-weight: 600;
       text-align: right;
     }
   </style>
@@ -345,7 +347,7 @@
   <header>
     <div>
       <h1>Pixel Craft</h1>
-      <p>Minecraft 26.3 Datapack Texture Editor</p>
+      <p>Vanilla Minecraft Item Texture & Datapack Blueprint Editor</p>
     </div>
     <div>
       <span style="font-size: 0.85rem; color: var(--text-muted);">Canvas Size: 16 x 16</span>
@@ -358,21 +360,21 @@
       <!-- Searchable Blueprint Selector -->
       <div class="panel-section">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h2>Minecraft 26.3 Blueprints</h2>
-          <span class="item-count-badge" id="item-count-badge">Loading items...</span>
+          <h2>Vanilla Blueprints</h2>
+          <span class="item-count-badge" id="item-count-badge">Loading Registry...</span>
         </div>
         
-        <input type="text" id="blueprint-search" placeholder="🔍 Search all 26.3 items (e.g. mace, ingot, disc)...">
+        <input type="text" id="blueprint-search" placeholder="🔍 Search all Minecraft items (e.g. mace, trim, sword)...">
         
         <div class="category-filters">
           <button class="category-btn active" data-category="all">All Items</button>
           <button class="category-btn" data-category="equipment">Equipment</button>
           <button class="category-btn" data-category="consumables">Consumables</button>
-          <button class="category-btn" data-category="blocks_mats">Blocks & Materials</button>
+          <button class="category-btn" data-category="blocks_mats">Blocks & Mats</button>
         </div>
 
         <div class="item-results-list" id="item-results">
-          <!-- Dynamically populated via 26.3 registry -->
+          <!-- Dynamically populated -->
         </div>
 
         <div class="slider-container">
@@ -439,9 +441,67 @@
     const GRID_SIZE = 16;
     const VIEWPORT_SIZE = 512;
     const PIXEL_SCALE = VIEWPORT_SIZE / GRID_SIZE;
-    const MINECRAFT_CDN = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/26.3/assets/minecraft/textures/item/";
+    const MINECRAFT_CDN = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21/assets/minecraft/textures/item/";
 
-    // Holds complete vanilla Minecraft 26.3 item registry
+    // Comprehensive embedded Vanilla Registry to guarantee full item coverage
+    const BUILTIN_VANILLA_ITEMS = [
+      // Weapons & Tools
+      'wooden_sword', 'stone_sword', 'iron_sword', 'golden_sword', 'diamond_sword', 'netherite_sword', 'mace', 'trident',
+      'bow', 'crossbow', 'arrow', 'spectral_arrow', 'tipped_arrow', 'shield',
+      'wooden_pickaxe', 'stone_pickaxe', 'iron_pickaxe', 'golden_pickaxe', 'diamond_pickaxe', 'netherite_pickaxe',
+      'wooden_axe', 'stone_axe', 'iron_axe', 'golden_axe', 'diamond_axe', 'netherite_axe',
+      'wooden_shovel', 'stone_shovel', 'iron_shovel', 'golden_shovel', 'diamond_shovel', 'netherite_shovel',
+      'wooden_hoe', 'stone_hoe', 'iron_hoe', 'golden_hoe', 'diamond_hoe', 'netherite_hoe',
+      'fishing_rod', 'carrot_on_a_stick', 'warped_fungus_on_a_stick', 'shears', 'flint_and_steel', 'brush', 'spyglass', 'compass', 'recovery_compass', 'clock',
+
+      // Armor
+      'leather_helmet', 'leather_chestplate', 'leather_leggings', 'leather_boots',
+      'chainmail_helmet', 'chainmail_chestplate', 'chainmail_leggings', 'chainmail_boots',
+      'iron_helmet', 'iron_chestplate', 'iron_leggings', 'iron_boots',
+      'golden_helmet', 'golden_chestplate', 'golden_leggings', 'golden_boots',
+      'diamond_helmet', 'diamond_chestplate', 'diamond_leggings', 'diamond_boots',
+      'netherite_helmet', 'netherite_chestplate', 'netherite_leggings', 'netherite_boots',
+      'turtle_helmet', 'elytra', 'wolf_armor',
+      'leather_horse_armor', 'iron_horse_armor', 'golden_horse_armor', 'diamond_horse_armor',
+
+      // Minerals & Materials
+      'coal', 'charcoal', 'raw_iron', 'iron_ingot', 'raw_copper', 'copper_ingot', 'raw_gold', 'golden_ingot',
+      'diamond', 'emerald', 'lapis_lazuli', 'netherite_scrap', 'netherite_ingot', 'amethyst_shard', 'quartz', 'flint',
+      'stick', 'bowl', 'string', 'feather', 'gunpowder', 'wheat', 'blaze_rod', 'breeze_rod', 'heavy_core', 'trial_key', 'ominous_trial_key',
+      'wind_charge', 'ender_pearl', 'eye_of_ender', 'ghast_tear', 'magma_cream', 'blaze_powder', 'slime_ball', 'phantom_membrane',
+      'prismarine_shard', 'prismarine_crystals', 'nautilus_shell', 'heart_of_the_sea', 'echo_shard', 'disc_fragment_5',
+      'nether_star', 'fire_charge', 'shulker_shell', 'totem_of_undying', 'honeycomb', 'resin_clump', 'resin_brick',
+
+      // Consumables & Food
+      'apple', 'golden_apple', 'enchanted_golden_apple', 'melon_slice', 'sweet_berries', 'glow_berries', 'chorus_fruit', 'popped_chorus_fruit',
+      'carrot', 'golden_carrot', 'potato', 'baked_potato', 'poisonous_potato', 'beetroot', 'beetroot_soup', 'mushroom_stew', 'rabbit_stew',
+      'bread', 'cookie', 'cake', 'pumpkin_pie', 'porkchop', 'cooked_porkchop', 'beef', 'cooked_beef', 'chicken', 'cooked_chicken',
+      'mutton', 'cooked_mutton', 'rabbit', 'cooked_rabbit', 'cod', 'cooked_cod', 'salmon', 'cooked_salmon', 'tropical_fish', 'pufferfish',
+      'rotten_flesh', 'spider_eye', 'fermented_spider_eye', 'dried_kelp', 'honey_bottle', 'milk_bucket', 'water_bucket', 'lava_bucket',
+      'glass_bottle', 'potion', 'splash_potion', 'lingering_potion', 'experience_bottle',
+
+      // Utility & Miscellaneous
+      'book', 'writable_book', 'written_book', 'enchanted_book', 'name_tag', 'lead', 'saddle', 'armor_stand', 'item_frame', 'glow_item_frame',
+      'painting', 'music_disc_13', 'music_disc_cat', 'music_disc_blocks', 'music_disc_chirp', 'music_disc_far', 'music_disc_mall',
+      'music_disc_mellohi', 'music_disc_stal', 'music_disc_strad', 'music_disc_ward', 'music_disc_11', 'music_disc_wait', 'music_disc_otherside',
+      'music_disc_5', 'music_disc_pigstep', 'music_disc_relic', 'music_disc_precipice', 'music_disc_creator', 'music_disc_creator_music_box',
+
+      // Smithing Templates & Trims
+      'netherite_upgrade_smithing_template', 'sentry_armor_trim_smithing_template', 'dune_armor_trim_smithing_template',
+      'coast_armor_trim_smithing_template', 'wild_armor_trim_smithing_template', 'ward_armor_trim_smithing_template',
+      'eye_armor_trim_smithing_template', 'vEX_armor_trim_smithing_template', 'tide_armor_trim_smithing_template',
+      'snout_armor_trim_smithing_template', 'rib_armor_trim_smithing_template', 'spire_armor_trim_smithing_template',
+      'wayfinder_armor_trim_smithing_template', 'raiser_armor_trim_smithing_template', 'shaper_armor_trim_smithing_template',
+      'host_armor_trim_smithing_template', 'silence_armor_trim_smithing_template', 'flow_armor_trim_smithing_template', 'bolt_armor_trim_smithing_template',
+
+      // Pottery Sherds
+      'angler_pottery_sherd', 'archer_pottery_sherd', 'arms_up_pottery_sherd', 'blade_pottery_sherd', 'brewer_pottery_sherd',
+      'burn_pottery_sherd', 'danger_pottery_sherd', 'explorer_pottery_sherd', 'friend_pottery_sherd', 'heart_pottery_sherd',
+      'heartbreak_pottery_sherd', 'howl_pottery_sherd', 'miner_pottery_sherd', 'mourner_pottery_sherd', 'plenty_pottery_sherd',
+      'prize_pottery_sherd', 'sheaf_pottery_sherd', 'shelter_pottery_sherd', 'skull_pottery_sherd', 'snort_pottery_sherd',
+      'guster_pottery_sherd', 'scrape_pottery_sherd'
+    ];
+
     let MINECRAFT_ITEMS = [];
 
     // Drawing Canvas
@@ -484,7 +544,7 @@
     let hasBlueprint = false;
     let ghostOpacity = 0.4;
 
-    // Default Swatches
+    // Swatches
     const defaultSwatches = [
       '#000000', '#ffffff', '#7c2d12', '#b45309', '#f59e0b', '#fef08a',
       '#15803d', '#22c55e', '#06b6d4', '#3b82f6', '#1d4ed8', '#a855f7',
@@ -499,33 +559,41 @@
       swatchContainer.appendChild(swatch);
     });
 
-    // Fetch full vanilla Minecraft 26.3 item registry dynamically
-    async function fetchMinecraftItemRegistry() {
-      try {
-        const res = await fetch('https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/26.3/items.json');
-        const items = await res.json();
-        MINECRAFT_ITEMS = items.map(item => item.name);
-      } catch (err) {
-        // Fallback comprehensive dataset if offline
-        MINECRAFT_ITEMS = [
-          'diamond_sword', 'mace', 'trident', 'bow', 'crossbow', 'shield',
-          'diamond_pickaxe', 'diamond_chestplate', 'elytra', 'poplar_log',
-          'poplar_planks', 'bracket_fungus', 'cushion', 'straw_bed', 'red_bush',
-          'apple', 'golden_apple', 'bread', 'amethyst_shard', 'netherite_ingot',
-          'wind_charge', 'breeze_rod', 'heavy_core', 'trial_key', 'music_disc_precipice'
-        ];
+    // Fetch and merge vanilla registry
+    async function loadFullMinecraftItemRegistry() {
+      let fetchedNames = [];
+      const endpoints = [
+        'https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/1.21/items.json',
+        'https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/1.20.4/items.json'
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            fetchedNames = data.map(i => i.name);
+            if (fetchedNames.length > 0) break;
+          }
+        } catch (e) {
+          // Fall through to next endpoint or built-in registry
+        }
       }
-      
-      itemCountBadge.textContent = `${MINECRAFT_ITEMS.length} items`;
+
+      // Merge fetched items with local built-in catalog to guarantee complete coverage
+      const set = new Set([...BUILTIN_VANILLA_ITEMS, ...fetchedNames]);
+      MINECRAFT_ITEMS = Array.from(set).sort();
+
+      itemCountBadge.textContent = `${MINECRAFT_ITEMS.length} Items Loaded`;
       renderItemList();
       loadVanillaBlueprint('diamond_sword');
     }
 
-    // Keyword Matchers for Category Tabs
+    // Keyword Filter Logic
     function matchesCategory(itemName, category) {
       if (category === 'all') return true;
       
-      const equipKeywords = ['sword', 'pickaxe', 'axe', 'shovel', 'hoe', 'mace', 'trident', 'bow', 'crossbow', 'shield', 'helmet', 'chestplate', 'leggings', 'boots', 'armor', 'horse_armor', 'shears', 'rod', 'compass', 'clock', 'spyglass', 'brush'];
+      const equipKeywords = ['sword', 'pickaxe', 'axe', 'shovel', 'hoe', 'mace', 'trident', 'bow', 'crossbow', 'shield', 'helmet', 'chestplate', 'leggings', 'boots', 'armor', 'horse_armor', 'shears', 'rod', 'compass', 'clock', 'spyglass', 'brush', 'template', 'sherd'];
       const consumableKeywords = ['apple', 'bread', 'porkchop', 'beef', 'chicken', 'mutton', 'rabbit', 'fish', 'salmon', 'cod', 'stew', 'soup', 'berry', 'berries', 'carrot', 'potato', 'beetroot', 'pie', 'cookie', 'kelp', 'bottle', 'bucket', 'potion'];
 
       if (category === 'equipment') {
@@ -540,7 +608,7 @@
       return true;
     }
 
-    // Render Search Results Across All 26.3 Items
+    // Render Search Results
     function renderItemList() {
       itemResultsList.innerHTML = "";
       const query = blueprintSearchInput.value.toLowerCase().trim().replace(/\s+/g, '_');
@@ -551,11 +619,10 @@
         filtered = filtered.filter(item => item.includes(query));
       }
 
-      // Render top 100 visible matches for UI responsiveness
-      const displayItems = filtered.slice(0, 100);
+      const displayItems = filtered.slice(0, 150);
 
       if (displayItems.length === 0) {
-        itemResultsList.innerHTML = `<div style="grid-column: 1/-1; padding: 10px; text-align: center; color: var(--text-muted); font-size: 0.75rem;">No items found</div>`;
+        itemResultsList.innerHTML = `<div style="grid-column: 1/-1; padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.75rem;">No items found</div>`;
         return;
       }
 
@@ -585,7 +652,7 @@
 
     blueprintSearchInput.addEventListener('input', renderItemList);
 
-    // Category Tabs Event Listeners
+    // Category Buttons
     document.querySelectorAll('.category-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
@@ -595,7 +662,7 @@
       });
     });
 
-    // Color Helpers
+    // Color Logic
     function hexToRgb(hex) {
       hex = hex.replace('#', '');
       if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
@@ -653,7 +720,7 @@
       renderViewport();
     });
 
-    // Load Vanilla Texture
+    // Load Blueprint Texture
     function loadVanillaBlueprint(itemName) {
       const img = new Image();
       img.crossOrigin = "Anonymous";
@@ -665,9 +732,15 @@
         hasBlueprint = true;
         renderViewport();
       };
+
+      img.onerror = () => {
+        bpCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+        hasBlueprint = false;
+        renderViewport();
+      };
     }
 
-    // Auto-Fill Blueprint Button
+    // Auto-Fill Canvas
     document.getElementById('btn-autofill-blueprint').addEventListener('click', () => {
       if (!hasBlueprint) return;
       offCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
@@ -785,8 +858,8 @@
       }, 'image/png');
     });
 
-    // Start App
-    fetchMinecraftItemRegistry();
+    // Initialize App
+    loadFullMinecraftItemRegistry();
   </script>
 </body>
 </html>
