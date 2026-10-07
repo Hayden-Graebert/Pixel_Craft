@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixel Craft - Datapack Texture Editor</title>
+  <title>Pixel Craft - Minecraft 26.3 Datapack Texture Editor</title>
   <style>
     :root {
       --bg-dark: #121316;
@@ -86,6 +86,30 @@
       color: var(--text-muted);
     }
 
+    .category-filters {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .category-btn {
+      padding: 4px 8px;
+      font-size: 0.72rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .category-btn.active {
+      background-color: var(--accent-color);
+      border-color: var(--accent-color);
+      color: #ffffff;
+    }
+
     .tool-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -155,13 +179,8 @@
       border-color: var(--accent-color);
     }
 
-    /* Searchable Blueprint Menu Styles */
-    .search-box {
-      position: relative;
-    }
-
     .item-results-list {
-      max-height: 180px;
+      max-height: 220px;
       overflow-y: auto;
       border: 1px solid var(--border-color);
       border-radius: 6px;
@@ -205,7 +224,6 @@
       flex-shrink: 0;
     }
 
-    /* Color Picker Styles */
     .color-picker-wrapper {
       display: flex;
       gap: 10px;
@@ -268,7 +286,6 @@
       transform: scale(1.1);
     }
 
-    /* Blueprint Controls */
     .slider-container {
       display: flex;
       align-items: center;
@@ -282,7 +299,6 @@
       accent-color: var(--accent-color);
     }
 
-    /* Editor Canvas Container */
     .editor-container {
       display: flex;
       flex-direction: column;
@@ -316,6 +332,12 @@
       image-rendering: crisp-edges;
       cursor: crosshair;
     }
+
+    .item-count-badge {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -323,7 +345,7 @@
   <header>
     <div>
       <h1>Pixel Craft</h1>
-      <p>Minecraft Datapack Texture Editor</p>
+      <p>Minecraft 26.3 Datapack Texture Editor</p>
     </div>
     <div>
       <span style="font-size: 0.85rem; color: var(--text-muted);">Canvas Size: 16 x 16</span>
@@ -333,15 +355,24 @@
   <div class="main-layout">
     <div class="sidebar">
       
-      <!-- Searchable Item Blueprint Loader -->
+      <!-- Searchable Blueprint Selector -->
       <div class="panel-section">
-        <h2>Minecraft Item Blueprint</h2>
-        <div class="search-box">
-          <input type="text" id="blueprint-search" placeholder="🔍 Search items (e.g. netherite, apple)...">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2>Minecraft 26.3 Blueprints</h2>
+          <span class="item-count-badge" id="item-count-badge">Loading items...</span>
         </div>
         
+        <input type="text" id="blueprint-search" placeholder="🔍 Search all 26.3 items (e.g. mace, ingot, disc)...">
+        
+        <div class="category-filters">
+          <button class="category-btn active" data-category="all">All Items</button>
+          <button class="category-btn" data-category="equipment">Equipment</button>
+          <button class="category-btn" data-category="consumables">Consumables</button>
+          <button class="category-btn" data-category="blocks_mats">Blocks & Materials</button>
+        </div>
+
         <div class="item-results-list" id="item-results">
-          <!-- Dynamically populated -->
+          <!-- Dynamically populated via 26.3 registry -->
         </div>
 
         <div class="slider-container">
@@ -353,7 +384,7 @@
         <button id="btn-autofill-blueprint" class="btn-autofill">⚡ Auto-Fill Blueprint to Canvas</button>
       </div>
 
-      <!-- Tool Options -->
+      <!-- Editing Tools -->
       <div class="panel-section">
         <h2>Editing Tools</h2>
         <div class="tool-grid">
@@ -364,7 +395,7 @@
         </div>
       </div>
 
-      <!-- Color Selector (Full RGB & HEX Controls) -->
+      <!-- Color Selector -->
       <div class="panel-section">
         <h2>Color Selector</h2>
         <div class="color-inputs">
@@ -386,9 +417,9 @@
         <div class="palette" id="swatch-palette"></div>
       </div>
 
-      <!-- Export Single PNG -->
+      <!-- Export PNG -->
       <div class="panel-section">
-        <h2>Export Single PNG</h2>
+        <h2>Export PNG</h2>
         <input type="text" id="filename-input" value="custom_item">
         <button id="btn-export" class="btn-primary">Download 16x16 .PNG</button>
         <button id="btn-clear" style="margin-top: 4px;">Clear Canvas</button>
@@ -396,7 +427,7 @@
 
     </div>
 
-    <!-- Canvas Viewport -->
+    <!-- Canvas Container -->
     <div class="editor-container">
       <div class="canvas-wrapper">
         <canvas id="viewport" width="512" height="512"></canvas>
@@ -408,52 +439,24 @@
     const GRID_SIZE = 16;
     const VIEWPORT_SIZE = 512;
     const PIXEL_SCALE = VIEWPORT_SIZE / GRID_SIZE;
-    const MINECRAFT_CDN = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.20.1/assets/minecraft/textures/item/";
+    const MINECRAFT_CDN = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/26.3/assets/minecraft/textures/item/";
 
-    // Extensive Minecraft Item Database
-    const MINECRAFT_ITEMS = [
-      "diamond_sword", "netherite_sword", "iron_sword", "golden_sword", "wooden_sword", "stone_sword",
-      "diamond_pickaxe", "netherite_pickaxe", "iron_pickaxe", "golden_pickaxe", "wooden_pickaxe", "stone_pickaxe",
-      "diamond_axe", "netherite_axe", "iron_axe", "golden_axe", "wooden_axe", "stone_axe",
-      "diamond_shovel", "netherite_shovel", "iron_shovel", "golden_shovel", "wooden_shovel", "stone_shovel",
-      "diamond_hoe", "netherite_hoe", "iron_hoe", "golden_hoe", "wooden_hoe", "stone_hoe",
-      "trident", "bow", "crossbow", "arrow", "spectral_arrow", "mace", "shield",
-      "apple", "golden_apple", "enchanted_golden_apple", "bread", "cooked_beef", "cooked_porkchop",
-      "cooked_chicken", "cooked_mutton", "cooked_cod", "cooked_salmon", "carrot", "golden_carrot",
-      "potato", "baked_potato", "poisonous_potato", "beetroot", "beetroot_soup", "mushroom_stew",
-      "rabbit_stew", "cookie", "cake", "pumpkin_pie", "sweet_berries", "glow_berries", "chorus_fruit",
-      "diamond", "emerald", "gold_ingot", "iron_ingot", "netherite_ingot", "copper_ingot", "coal",
-      "charcoal", "raw_iron", "raw_gold", "raw_copper", "amethyst_shard", "lapis_lazuli", "quartz",
-      "redstone", "glowstone_dust", "prismarine_shard", "prismarine_crystals", "echo_shard",
-      "stick", "string", "feather", "gunpowder", "wheat", "flint", "leather", "rabbit_hide",
-      "blaze_rod", "blaze_powder", "ender_pearl", "eye_of_ender", "magma_cream", "ghast_tear",
-      "breeze_rod", "heavy_core", "trial_key", "ominous_trial_key",
-      "totem_of_undying", "elytra", "compass", "recovery_compass", "clock", "fishing_rod", "spyglass",
-      "lead", "name_tag", "shears", "flint_and_steel", "fire_charge", "bundle",
-      "book", "enchanted_book", "written_book", "writable_book", "paper", "map", "filled_map",
-      "potion", "splash_potion", "lingering_potion", "experience_bottle", "glass_bottle",
-      "dragon_breath", "honey_bottle", "honeycomb",
-      "bucket", "water_bucket", "lava_bucket", "milk_bucket", "powder_snow_bucket", "axolotl_bucket",
-      "saddle", "iron_horse_armor", "golden_horse_armor", "diamond_horse_armor", "leather_horse_armor",
-      "music_disc_13", "music_disc_cat", "music_disc_blocks", "music_disc_chirp", "music_disc_far",
-      "music_disc_mall", "music_disc_mellohi", "music_disc_stal", "music_disc_strad", "music_disc_ward",
-      "music_disc_11", "music_disc_wait", "music_disc_otherside", "music_disc_5", "music_disc_pigstep",
-      "music_disc_relic", "music_disc_creator", "music_disc_precipice"
-    ];
+    // Holds complete vanilla Minecraft 26.3 item registry
+    let MINECRAFT_ITEMS = [];
 
-    // Drawing Canvas (User editable pixels)
+    // Drawing Canvas
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = GRID_SIZE;
     offscreenCanvas.height = GRID_SIZE;
     const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 
-    // Ghost Blueprint Canvas (Vanilla reference pixels)
+    // Ghost Blueprint Canvas
     const blueprintCanvas = document.createElement('canvas');
     blueprintCanvas.width = GRID_SIZE;
     blueprintCanvas.height = GRID_SIZE;
     const bpCtx = blueprintCanvas.getContext('2d', { willReadFrequently: true });
 
-    // Viewport Display Canvas
+    // Viewport Canvas
     const viewportCanvas = document.getElementById('viewport');
     const viewCtx = viewportCanvas.getContext('2d');
 
@@ -470,16 +473,18 @@
     const opacityValLabel = document.getElementById('opacity-val');
     const filenameInput = document.getElementById('filename-input');
     const swatchContainer = document.getElementById('swatch-palette');
+    const itemCountBadge = document.getElementById('item-count-badge');
 
     // App State
     let activeTool = 'pencil';
     let currentColor = '#3b82f6';
     let selectedItemName = 'diamond_sword';
+    let activeCategory = 'all';
     let isDrawing = false;
     let hasBlueprint = false;
     let ghostOpacity = 0.4;
 
-    // Palette Defaults
+    // Default Swatches
     const defaultSwatches = [
       '#000000', '#ffffff', '#7c2d12', '#b45309', '#f59e0b', '#fef08a',
       '#15803d', '#22c55e', '#06b6d4', '#3b82f6', '#1d4ed8', '#a855f7',
@@ -494,21 +499,67 @@
       swatchContainer.appendChild(swatch);
     });
 
-    // Populate Searchable Item Menu
-    function renderItemList(filterText = "") {
+    // Fetch full vanilla Minecraft 26.3 item registry dynamically
+    async function fetchMinecraftItemRegistry() {
+      try {
+        const res = await fetch('https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/26.3/items.json');
+        const items = await res.json();
+        MINECRAFT_ITEMS = items.map(item => item.name);
+      } catch (err) {
+        // Fallback comprehensive dataset if offline
+        MINECRAFT_ITEMS = [
+          'diamond_sword', 'mace', 'trident', 'bow', 'crossbow', 'shield',
+          'diamond_pickaxe', 'diamond_chestplate', 'elytra', 'poplar_log',
+          'poplar_planks', 'bracket_fungus', 'cushion', 'straw_bed', 'red_bush',
+          'apple', 'golden_apple', 'bread', 'amethyst_shard', 'netherite_ingot',
+          'wind_charge', 'breeze_rod', 'heavy_core', 'trial_key', 'music_disc_precipice'
+        ];
+      }
+      
+      itemCountBadge.textContent = `${MINECRAFT_ITEMS.length} items`;
+      renderItemList();
+      loadVanillaBlueprint('diamond_sword');
+    }
+
+    // Keyword Matchers for Category Tabs
+    function matchesCategory(itemName, category) {
+      if (category === 'all') return true;
+      
+      const equipKeywords = ['sword', 'pickaxe', 'axe', 'shovel', 'hoe', 'mace', 'trident', 'bow', 'crossbow', 'shield', 'helmet', 'chestplate', 'leggings', 'boots', 'armor', 'horse_armor', 'shears', 'rod', 'compass', 'clock', 'spyglass', 'brush'];
+      const consumableKeywords = ['apple', 'bread', 'porkchop', 'beef', 'chicken', 'mutton', 'rabbit', 'fish', 'salmon', 'cod', 'stew', 'soup', 'berry', 'berries', 'carrot', 'potato', 'beetroot', 'pie', 'cookie', 'kelp', 'bottle', 'bucket', 'potion'];
+
+      if (category === 'equipment') {
+        return equipKeywords.some(kw => itemName.includes(kw));
+      }
+      if (category === 'consumables') {
+        return consumableKeywords.some(kw => itemName.includes(kw));
+      }
+      if (category === 'blocks_mats') {
+        return !equipKeywords.some(kw => itemName.includes(kw)) && !consumableKeywords.some(kw => itemName.includes(kw));
+      }
+      return true;
+    }
+
+    // Render Search Results Across All 26.3 Items
+    function renderItemList() {
       itemResultsList.innerHTML = "";
-      const query = filterText.toLowerCase().trim();
+      const query = blueprintSearchInput.value.toLowerCase().trim().replace(/\s+/g, '_');
 
-      const filteredItems = MINECRAFT_ITEMS.filter(item => 
-        item.toLowerCase().replace(/_/g, " ").includes(query)
-      );
+      let filtered = MINECRAFT_ITEMS.filter(item => matchesCategory(item, activeCategory));
 
-      if (filteredItems.length === 0) {
-        itemResultsList.innerHTML = `<div style="grid-column: 1/-1; padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No matching items found</div>`;
+      if (query) {
+        filtered = filtered.filter(item => item.includes(query));
+      }
+
+      // Render top 100 visible matches for UI responsiveness
+      const displayItems = filtered.slice(0, 100);
+
+      if (displayItems.length === 0) {
+        itemResultsList.innerHTML = `<div style="grid-column: 1/-1; padding: 10px; text-align: center; color: var(--text-muted); font-size: 0.75rem;">No items found</div>`;
         return;
       }
 
-      filteredItems.forEach(item => {
+      displayItems.forEach(item => {
         const card = document.createElement('div');
         card.className = `item-card ${item === selectedItemName ? 'selected' : ''}`;
         
@@ -516,7 +567,7 @@
         const imgUrl = `${MINECRAFT_CDN}${item}.png`;
 
         card.innerHTML = `
-          <img src="${imgUrl}" alt="${item}" onerror="this.style.opacity=0.3">
+          <img src="${imgUrl}" alt="${item}" onerror="this.style.opacity=0.2">
           <span>${formattedName}</span>
         `;
 
@@ -532,22 +583,24 @@
       });
     }
 
-    blueprintSearchInput.addEventListener('input', (e) => {
-      renderItemList(e.target.value);
+    blueprintSearchInput.addEventListener('input', renderItemList);
+
+    // Category Tabs Event Listeners
+    document.querySelectorAll('.category-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        activeCategory = e.target.dataset.category;
+        renderItemList();
+      });
     });
 
-    // Color Conversion & Syncing
+    // Color Helpers
     function hexToRgb(hex) {
       hex = hex.replace('#', '');
-      if (hex.length === 3) {
-        hex = hex.split('').map(c => c + c).join('');
-      }
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
       const num = parseInt(hex, 16);
-      return {
-        r: (num >> 16) & 255,
-        g: (num >> 8) & 255,
-        b: num & 255
-      };
+      return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
     }
 
     function rgbToHex(r, g, b) {
@@ -561,9 +614,7 @@
       currentColor = hex;
       colorPicker.value = hex;
       colorHex.value = hex.toUpperCase();
-      rgbR.value = r;
-      rgbG.value = g;
-      rgbB.value = b;
+      rgbR.value = r; rgbG.value = g; rgbB.value = b;
     }
 
     function setColorFromHex(hex) {
@@ -582,12 +633,11 @@
         const r = parseInt(rgbR.value) || 0;
         const g = parseInt(rgbG.value) || 0;
         const b = parseInt(rgbB.value) || 0;
-        const hex = rgbToHex(r, g, b);
-        updateColorUI(r, g, b, hex);
+        updateColorUI(r, g, b, rgbToHex(r, g, b));
       });
     });
 
-    // Tool Buttons
+    // Tool Selector
     const tools = ['pencil', 'eraser', 'fill', 'picker'];
     tools.forEach(tool => {
       document.getElementById(`tool-${tool}`).addEventListener('click', (e) => {
@@ -597,14 +647,13 @@
       });
     });
 
-    // Ghost Opacity Slider
     ghostOpacityInput.addEventListener('input', (e) => {
       ghostOpacity = e.target.value / 100;
       opacityValLabel.textContent = `${e.target.value}%`;
       renderViewport();
     });
 
-    // Fetch and Load Official Vanilla Minecraft Textures
+    // Load Vanilla Texture
     function loadVanillaBlueprint(itemName) {
       const img = new Image();
       img.crossOrigin = "Anonymous";
@@ -616,26 +665,21 @@
         hasBlueprint = true;
         renderViewport();
       };
-
-      img.onerror = () => {
-        console.warn(`Could not load texture for: ${itemName}`);
-      };
     }
 
-    // Auto-Fill Blueprint Button (Copies Blueprint directly to user active canvas)
+    // Auto-Fill Blueprint Button
     document.getElementById('btn-autofill-blueprint').addEventListener('click', () => {
       if (!hasBlueprint) return;
-      const bpData = bpCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE);
-      offCtx.putImageData(bpData, 0, 0);
+      offCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+      offCtx.drawImage(blueprintCanvas, 0, 0);
       renderViewport();
     });
 
-    // Viewport Render Loop
+    // Render Function
     function renderViewport() {
       viewCtx.clearRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
       viewCtx.imageSmoothingEnabled = false;
 
-      // 1. Render Ghost Blueprint (if loaded)
       if (hasBlueprint && ghostOpacity > 0) {
         viewCtx.save();
         viewCtx.globalAlpha = ghostOpacity;
@@ -643,36 +687,23 @@
         viewCtx.restore();
       }
 
-      // 2. Render Active User Drawing Layer
       viewCtx.drawImage(offscreenCanvas, 0, 0, GRID_SIZE, GRID_SIZE, 0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
 
-      // 3. Render Pixel Grid Lines
       viewCtx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
       viewCtx.lineWidth = 1;
 
       for (let i = 0; i <= GRID_SIZE; i++) {
         const pos = i * PIXEL_SCALE;
-        viewCtx.beginPath();
-        viewCtx.moveTo(pos, 0);
-        viewCtx.lineTo(pos, VIEWPORT_SIZE);
-        viewCtx.stroke();
-
-        viewCtx.beginPath();
-        viewCtx.moveTo(0, pos);
-        viewCtx.lineTo(VIEWPORT_SIZE, pos);
-        viewCtx.stroke();
+        viewCtx.beginPath(); viewCtx.moveTo(pos, 0); viewCtx.lineTo(pos, VIEWPORT_SIZE); viewCtx.stroke();
+        viewCtx.beginPath(); viewCtx.moveTo(0, pos); viewCtx.lineTo(VIEWPORT_SIZE, pos); viewCtx.stroke();
       }
     }
 
-    // Pixel Drawing Operations
     function getGridCoords(e) {
       const rect = viewportCanvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) / PIXEL_SCALE);
       const y = Math.floor((e.clientY - rect.top) / PIXEL_SCALE);
-      return { 
-        x: Math.max(0, Math.min(GRID_SIZE - 1, x)), 
-        y: Math.max(0, Math.min(GRID_SIZE - 1, y)) 
-      };
+      return { x: Math.max(0, Math.min(GRID_SIZE - 1, x)), y: Math.max(0, Math.min(GRID_SIZE - 1, y)) };
     }
 
     function applyTool(x, y) {
@@ -683,13 +714,8 @@
         offCtx.clearRect(x, y, 1, 1);
       } else if (activeTool === 'picker') {
         let pixel = offCtx.getImageData(x, y, 1, 1).data;
-        if (pixel[3] === 0 && hasBlueprint) {
-          pixel = bpCtx.getImageData(x, y, 1, 1).data;
-        }
-        if (pixel[3] > 0) {
-          const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-          setColorFromHex(hex);
-        }
+        if (pixel[3] === 0 && hasBlueprint) pixel = bpCtx.getImageData(x, y, 1, 1).data;
+        if (pixel[3] > 0) setColorFromHex(rgbToHex(pixel[0], pixel[1], pixel[2]));
       } else if (activeTool === 'fill') {
         floodFill(x, y, currentColor);
       }
@@ -699,7 +725,6 @@
     function floodFill(startX, startY, hexColor) {
       const targetData = offCtx.getImageData(startX, startY, 1, 1).data;
       const targetColor = [...targetData];
-      
       const { r, g, b } = hexToRgb(hexColor);
       const fillColor = [r, g, b, 255];
 
@@ -713,26 +738,19 @@
         if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
 
         const idx = (y * GRID_SIZE + x) * 4;
-        const curColor = [
-          imgData.data[idx],
-          imgData.data[idx + 1],
-          imgData.data[idx + 2],
-          imgData.data[idx + 3]
-        ];
+        const curColor = [imgData.data[idx], imgData.data[idx + 1], imgData.data[idx + 2], imgData.data[idx + 3]];
 
         if (curColor.every((val, i) => val === targetColor[i])) {
           imgData.data[idx] = fillColor[0];
           imgData.data[idx + 1] = fillColor[1];
           imgData.data[idx + 2] = fillColor[2];
           imgData.data[idx + 3] = fillColor[3];
-
           stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
         }
       }
       offCtx.putImageData(imgData, 0, 0);
     }
 
-    // Mouse Interaction
     viewportCanvas.addEventListener('mousedown', (e) => {
       isDrawing = true;
       const { x, y } = getGridCoords(e);
@@ -748,22 +766,18 @@
 
     window.addEventListener('mouseup', () => { isDrawing = false; });
 
-    // Clear Canvas
     document.getElementById('btn-clear').addEventListener('click', () => {
       offCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
       renderViewport();
     });
 
-    // Single PNG Export
     document.getElementById('btn-export').addEventListener('click', () => {
       const filename = filenameInput.value.trim() || 'custom_texture';
-      
       offscreenCanvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = filename.endsWith('.png') ? filename : `${filename}.png`;
-        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -771,9 +785,8 @@
       }, 'image/png');
     });
 
-    // Default Initialization
-    renderItemList();
-    loadVanillaBlueprint('diamond_sword');
+    // Start App
+    fetchMinecraftItemRegistry();
   </script>
 </body>
 </html>
