@@ -54,7 +54,7 @@
 
     .main-layout {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       flex: 1;
       overflow: hidden;
     }
@@ -129,7 +129,18 @@
       background-color: var(--accent-hover);
     }
 
-    select, input[type="text"], input[type="number"] {
+    .btn-autofill {
+      background-color: #10b981;
+      border-color: #059669;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .btn-autofill:hover {
+      background-color: #059669;
+    }
+
+    input[type="text"], input[type="number"] {
       background-color: var(--bg-panel);
       color: var(--text-main);
       border: 1px solid var(--border-color);
@@ -140,8 +151,58 @@
       width: 100%;
     }
 
-    select:focus, input[type="text"]:focus, input[type="number"]:focus {
+    input[type="text"]:focus, input[type="number"]:focus {
       border-color: var(--accent-color);
+    }
+
+    /* Searchable Blueprint Menu Styles */
+    .search-box {
+      position: relative;
+    }
+
+    .item-results-list {
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background-color: var(--bg-panel);
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 6px;
+    }
+
+    .item-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: var(--bg-card);
+      border: 1px solid transparent;
+      font-size: 0.75rem;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .item-card:hover {
+      border-color: var(--accent-color);
+      background-color: #2e323b;
+    }
+
+    .item-card.selected {
+      border-color: var(--accent-color);
+      background-color: var(--accent-color);
+      color: #fff;
+    }
+
+    .item-card img {
+      width: 20px;
+      height: 20px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
     }
 
     /* Color Picker Styles */
@@ -272,55 +333,16 @@
   <div class="main-layout">
     <div class="sidebar">
       
-      <!-- Vanilla Item Blueprint Loader -->
+      <!-- Searchable Item Blueprint Loader -->
       <div class="panel-section">
         <h2>Minecraft Item Blueprint</h2>
-        <select id="blueprint-select">
-          <option value="none">-- No Blueprint --</option>
-          <optgroup label="Swords & Weapons">
-            <option value="diamond_sword">Diamond Sword</option>
-            <option value="netherite_sword">Netherite Sword</option>
-            <option value="iron_sword">Iron Sword</option>
-            <option value="golden_sword">Golden Sword</option>
-            <option value="wooden_sword">Wooden Sword</option>
-            <option value="trident">Trident</option>
-            <option value="bow">Bow</option>
-            <option value="crossbow">Crossbow</option>
-            <option value="arrow">Arrow</option>
-          </optgroup>
-          <optgroup label="Tools">
-            <option value="diamond_pickaxe">Diamond Pickaxe</option>
-            <option value="netherite_pickaxe">Netherite Pickaxe</option>
-            <option value="diamond_axe">Diamond Axe</option>
-            <option value="diamond_shovel">Diamond Shovel</option>
-            <option value="diamond_hoe">Diamond Hoe</option>
-            <option value="compass">Compass</option>
-            <option value="clock">Clock</option>
-            <option value="fishing_rod">Fishing Rod</option>
-          </optgroup>
-          <optgroup label="Food & Resources">
-            <option value="apple">Apple</option>
-            <option value="golden_apple">Golden Apple</option>
-
-            <option value="bread">Bread</option>
-            <option value="cooked_beef">Cooked Beef</option>
-            <option value="diamond">Diamond</option>
-            <option value="emerald">Emerald</option>
-            <option value="gold_ingot">Gold Ingot</option>
-            <option value="iron_ingot">Iron Ingot</option>
-            <option value="netherite_ingot">Netherite Ingot</option>
-          </optgroup>
-          <optgroup label="Special & Magic">
-            <option value="totem_of_undying">Totem of Undying</option>
-            <option value="ender_pearl">Ender Pearl</option>
-            <option value="eye_of_ender">Eye of Ender</option>
-            <option value="elytra">Elytra</option>
-            <option value="book">Book</option>
-            <option value="enchanted_book">Enchanted Book</option>
-            <option value="potion">Potion</option>
-            <option value="experience_bottle">Experience Bottle</option>
-          </optgroup>
-        </select>
+        <div class="search-box">
+          <input type="text" id="blueprint-search" placeholder="🔍 Search items (e.g. netherite, apple)...">
+        </div>
+        
+        <div class="item-results-list" id="item-results">
+          <!-- Dynamically populated -->
+        </div>
 
         <div class="slider-container">
           <span>Ghost Opacity:</span>
@@ -328,7 +350,7 @@
           <span id="opacity-val">40%</span>
         </div>
 
-        <button id="btn-copy-blueprint" style="margin-top: 4px;">Copy Blueprint to Canvas</button>
+        <button id="btn-autofill-blueprint" class="btn-autofill">⚡ Auto-Fill Blueprint to Canvas</button>
       </div>
 
       <!-- Tool Options -->
@@ -388,7 +410,38 @@
     const PIXEL_SCALE = VIEWPORT_SIZE / GRID_SIZE;
     const MINECRAFT_CDN = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.20.1/assets/minecraft/textures/item/";
 
-    // Drawing Canvas (User pixels)
+    // Extensive Minecraft Item Database
+    const MINECRAFT_ITEMS = [
+      "diamond_sword", "netherite_sword", "iron_sword", "golden_sword", "wooden_sword", "stone_sword",
+      "diamond_pickaxe", "netherite_pickaxe", "iron_pickaxe", "golden_pickaxe", "wooden_pickaxe", "stone_pickaxe",
+      "diamond_axe", "netherite_axe", "iron_axe", "golden_axe", "wooden_axe", "stone_axe",
+      "diamond_shovel", "netherite_shovel", "iron_shovel", "golden_shovel", "wooden_shovel", "stone_shovel",
+      "diamond_hoe", "netherite_hoe", "iron_hoe", "golden_hoe", "wooden_hoe", "stone_hoe",
+      "trident", "bow", "crossbow", "arrow", "spectral_arrow", "mace", "shield",
+      "apple", "golden_apple", "enchanted_golden_apple", "bread", "cooked_beef", "cooked_porkchop",
+      "cooked_chicken", "cooked_mutton", "cooked_cod", "cooked_salmon", "carrot", "golden_carrot",
+      "potato", "baked_potato", "poisonous_potato", "beetroot", "beetroot_soup", "mushroom_stew",
+      "rabbit_stew", "cookie", "cake", "pumpkin_pie", "sweet_berries", "glow_berries", "chorus_fruit",
+      "diamond", "emerald", "gold_ingot", "iron_ingot", "netherite_ingot", "copper_ingot", "coal",
+      "charcoal", "raw_iron", "raw_gold", "raw_copper", "amethyst_shard", "lapis_lazuli", "quartz",
+      "redstone", "glowstone_dust", "prismarine_shard", "prismarine_crystals", "echo_shard",
+      "stick", "string", "feather", "gunpowder", "wheat", "flint", "leather", "rabbit_hide",
+      "blaze_rod", "blaze_powder", "ender_pearl", "eye_of_ender", "magma_cream", "ghast_tear",
+      "breeze_rod", "heavy_core", "trial_key", "ominous_trial_key",
+      "totem_of_undying", "elytra", "compass", "recovery_compass", "clock", "fishing_rod", "spyglass",
+      "lead", "name_tag", "shears", "flint_and_steel", "fire_charge", "bundle",
+      "book", "enchanted_book", "written_book", "writable_book", "paper", "map", "filled_map",
+      "potion", "splash_potion", "lingering_potion", "experience_bottle", "glass_bottle",
+      "dragon_breath", "honey_bottle", "honeycomb",
+      "bucket", "water_bucket", "lava_bucket", "milk_bucket", "powder_snow_bucket", "axolotl_bucket",
+      "saddle", "iron_horse_armor", "golden_horse_armor", "diamond_horse_armor", "leather_horse_armor",
+      "music_disc_13", "music_disc_cat", "music_disc_blocks", "music_disc_chirp", "music_disc_far",
+      "music_disc_mall", "music_disc_mellohi", "music_disc_stal", "music_disc_strad", "music_disc_ward",
+      "music_disc_11", "music_disc_wait", "music_disc_otherside", "music_disc_5", "music_disc_pigstep",
+      "music_disc_relic", "music_disc_creator", "music_disc_precipice"
+    ];
+
+    // Drawing Canvas (User editable pixels)
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = GRID_SIZE;
     offscreenCanvas.height = GRID_SIZE;
@@ -411,7 +464,8 @@
     const rgbG = document.getElementById('rgb-g');
     const rgbB = document.getElementById('rgb-b');
     
-    const blueprintSelect = document.getElementById('blueprint-select');
+    const blueprintSearchInput = document.getElementById('blueprint-search');
+    const itemResultsList = document.getElementById('item-results');
     const ghostOpacityInput = document.getElementById('ghost-opacity');
     const opacityValLabel = document.getElementById('opacity-val');
     const filenameInput = document.getElementById('filename-input');
@@ -420,6 +474,7 @@
     // App State
     let activeTool = 'pencil';
     let currentColor = '#3b82f6';
+    let selectedItemName = 'diamond_sword';
     let isDrawing = false;
     let hasBlueprint = false;
     let ghostOpacity = 0.4;
@@ -437,6 +492,48 @@
       swatch.style.backgroundColor = color;
       swatch.addEventListener('click', () => setColorFromHex(color));
       swatchContainer.appendChild(swatch);
+    });
+
+    // Populate Searchable Item Menu
+    function renderItemList(filterText = "") {
+      itemResultsList.innerHTML = "";
+      const query = filterText.toLowerCase().trim();
+
+      const filteredItems = MINECRAFT_ITEMS.filter(item => 
+        item.toLowerCase().replace(/_/g, " ").includes(query)
+      );
+
+      if (filteredItems.length === 0) {
+        itemResultsList.innerHTML = `<div style="grid-column: 1/-1; padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No matching items found</div>`;
+        return;
+      }
+
+      filteredItems.forEach(item => {
+        const card = document.createElement('div');
+        card.className = `item-card ${item === selectedItemName ? 'selected' : ''}`;
+        
+        const formattedName = item.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const imgUrl = `${MINECRAFT_CDN}${item}.png`;
+
+        card.innerHTML = `
+          <img src="${imgUrl}" alt="${item}" onerror="this.style.opacity=0.3">
+          <span>${formattedName}</span>
+        `;
+
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedItemName = item;
+          filenameInput.value = `custom_${item}`;
+          loadVanillaBlueprint(item);
+        });
+
+        itemResultsList.appendChild(card);
+      });
+    }
+
+    blueprintSearchInput.addEventListener('input', (e) => {
+      renderItemList(e.target.value);
     });
 
     // Color Conversion & Syncing
@@ -509,15 +606,8 @@
 
     // Fetch and Load Official Vanilla Minecraft Textures
     function loadVanillaBlueprint(itemName) {
-      if (itemName === 'none') {
-        bpCtx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
-        hasBlueprint = false;
-        renderViewport();
-        return;
-      }
-
       const img = new Image();
-      img.crossOrigin = "Anonymous"; // Allows cross-domain canvas drawing
+      img.crossOrigin = "Anonymous";
       img.src = `${MINECRAFT_CDN}${itemName}.png`;
 
       img.onload = () => {
@@ -532,12 +622,8 @@
       };
     }
 
-    blueprintSelect.addEventListener('change', (e) => {
-      loadVanillaBlueprint(e.target.value);
-    });
-
-    // Copy Blueprint pixels over to active user canvas
-    document.getElementById('btn-copy-blueprint').addEventListener('click', () => {
+    // Auto-Fill Blueprint Button (Copies Blueprint directly to user active canvas)
+    document.getElementById('btn-autofill-blueprint').addEventListener('click', () => {
       if (!hasBlueprint) return;
       const bpData = bpCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE);
       offCtx.putImageData(bpData, 0, 0);
@@ -596,7 +682,6 @@
       } else if (activeTool === 'eraser') {
         offCtx.clearRect(x, y, 1, 1);
       } else if (activeTool === 'picker') {
-        // Sample from drawing canvas first, or blueprint canvas if blank
         let pixel = offCtx.getImageData(x, y, 1, 1).data;
         if (pixel[3] === 0 && hasBlueprint) {
           pixel = bpCtx.getImageData(x, y, 1, 1).data;
@@ -687,7 +772,7 @@
     });
 
     // Default Initialization
-    blueprintSelect.value = 'diamond_sword';
+    renderItemList();
     loadVanillaBlueprint('diamond_sword');
   </script>
 </body>
